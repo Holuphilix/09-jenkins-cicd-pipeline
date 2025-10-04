@@ -187,9 +187,9 @@ sudo systemctl status jenkins
 
 Jenkins is now installed, running, and accessible via the web console. The instance is ready for job creation and pipeline configuration.
 
-## **Task 3: Creating a Freestyle Jenkins Job**
+## **Task 3: Creating a Freestyle Jenkins Job and Pushing Project to GitHub**
 
-**Objective:** Learn how to create and configure a Freestyle Jenkins job to automate builds and basic tasks.
+**Objective:** Learn how to create and configure a Freestyle Jenkins job to automate builds and basic tasks, and push your local project to a GitHub repository.
 
 ### **Steps:**
 
@@ -212,15 +212,19 @@ Jenkins is now installed, running, and accessible via the web console. The insta
 #### 3. **Configure Source Code Management (SCM)**
 
 1. In the job configuration, scroll to **“Source Code Management”**.
-2. Select **Git** and provide your repository URL (e.g., GitHub repository).
-3. If required, add credentials for accessing the repository.
+2. Select **Git** and provide your repository URL:
+
+   ```
+   https://github.com/Holuphilix/09-jenkins-cicd-pipeline.git
+   ```
+3. Add credentials if required to access the repository.
 
 #### 4. **Configure Build Triggers**
 
 1. Scroll to **“Build Triggers”**.
 2. Enable triggers as needed, for example:
 
-   * **Poll SCM** → Jenkins will check for changes periodically.
+   * **Poll SCM** → Jenkins checks the repository periodically for changes.
    * **Build periodically** → Schedule builds at specific times.
 
 **Screenshot:** Build Triggers
@@ -229,7 +233,7 @@ Jenkins is now installed, running, and accessible via the web console. The insta
 #### 5. **Add Build Steps**
 
 1. Scroll to **“Build”** section.
-2. Click **“Add build step”** and select an action, such as:
+2. Click **“Add build step”** and select an action:
 
    * **Execute shell** → Run Linux shell commands.
    * **Invoke Ant** or **Invoke Gradle** → Run build tools if applicable.
@@ -243,31 +247,31 @@ Jenkins is now installed, running, and accessible via the web console. The insta
 
 ### **Steps to Push Local Project to GitHub**
 
-1. **Initialize a Git Repository Locally (if not already done):**
+#### 1. **Initialize a Git Repository Locally (if not already done):**
 
    ```bash
    git init
    ```
 
-2. **Add Remote Repository:**
+#### 2. **Add Remote Repository:**
 
    ```bash
    git remote add origin https://github.com/Holuphilix/09-jenkins-cicd-pipeline.git
    ```
 
-3. **Add All Project Files:**
+#### 3. **Add All Project Files:**
 
    ```bash
    git add .
    ```
 
-4. **Commit the Files:**
+#### 4. **Commit the Files:**
 
    ```bash
    git commit -m "Initial commit of Jenkins CI/CD pipeline project"
    ```
 
-5. **Push to GitHub:**
+#### 5. **Push to GitHub:**
 
    ```bash
    git push -u origin master
@@ -275,7 +279,7 @@ Jenkins is now installed, running, and accessible via the web console. The insta
 
 ### ✅ **Task 3 Complete:**
 
-A Freestyle Jenkins job has been created, configured with SCM, build triggers, and build steps. This serves as the foundation for automating builds in your CI/CD pipeline.
+A Freestyle Jenkins job has been created, connected to your GitHub repository, configured with SCM, build triggers, and build steps. Your local project has also been pushed to GitHub, enabling automated builds on code changes.
 
 ## **Task 4: Creating a Jenkins Pipeline Job**
 
@@ -605,3 +609,146 @@ pipeline {
 ### ✅ **Task 7 Complete:**
 
 The Jenkins Pipeline is now integrated with Docker, allowing builds, tests, and deployments to be containerized for consistent and isolated execution across environments.
+
+## **Task 8: Configuring Build Triggers**
+
+**Objective:** Set up automated build triggers in Jenkins so that jobs or pipelines run automatically when changes are pushed to the GitHub repository or on a schedule.
+
+### **Steps:**
+
+#### 1. **Access Jenkins Web Console**
+
+* Open your web browser and navigate to:
+
+  ```
+  http://<your_public_ip_address>:8080
+  ```
+* Log in with your Jenkins admin credentials.
+
+#### 2. **Open Job or Pipeline Configuration**
+
+* From the Jenkins dashboard, click on the job or pipeline you want to configure.
+* Click **“Configure”** in the left-hand menu.
+
+#### 3. **Navigate to Build Triggers Section**
+
+* Scroll down to the **Build Triggers** section in the job configuration page.
+
+#### 4. **Choose Build Trigger Options**
+
+* **Poll SCM**
+
+  * Jenkins will periodically check the repository for changes.
+  * Example schedule (every 5 minutes):
+
+    ```
+    H/5 * * * *
+    ```
+* **Build periodically**
+
+  * Schedule builds at specific times, independent of code changes.
+  * Example schedule (daily at 2 AM):
+
+    ```
+    H 2 * * *
+    ```
+* **GitHub hook trigger for GITScm polling**
+
+  * Trigger a build automatically when a push occurs in GitHub.
+  * Requires setting up a **Webhook** on the GitHub repository pointing to:
+
+    ```
+    http://<jenkins-ip>:8080/github-webhook/
+    ```
+* **Parameterized builds** (optional)
+
+  * Allow triggering builds with specific parameters such as branch, environment, or version.
+
+#### 5. **Save the Configuration**
+
+* Click **“Save”** at the bottom of the page to apply build triggers.
+
+#### 6. **Test the Build Triggers**
+
+1. Push a change to your GitHub repository (if using Poll SCM or GitHub hook).
+2. Verify that Jenkins automatically triggers the build.
+3. Check **Build History** in the Jenkins dashboard for confirmation.
+
+### ✅ **Task 8 Complete:**
+
+Build triggers are now configured, enabling **automatic pipeline execution** on GitHub pushes, scheduled times, or parameterized inputs, ensuring CI/CD runs consistently without manual intervention.
+
+## **Task 9: Connecting Jenkins to GitHub (SCM) and Setting Up Webhooks**
+
+**Objective:** Integrate Jenkins with your GitHub repository so that pipeline jobs automatically trigger on code pushes using webhooks.
+
+### **Steps:**
+
+#### 1. **Access Jenkins Web Console**
+
+* Open your web browser and navigate to:
+
+  ```
+  http://<your_public_ip_address>:8080
+  ```
+* Log in with your Jenkins admin credentials.
+
+#### 2. **Open Pipeline Job Configuration**
+
+* From the Jenkins dashboard, click on the pipeline job (e.g., `pipeline-ci-cd-job`).
+* Click **“Configure”** in the left-hand menu.
+
+#### 3. **Configure Source Code Management (SCM)**
+
+1. Scroll to **“Pipeline” → Definition**.
+2. Select **“Pipeline script from SCM”**.
+3. Choose **Git** and enter your repository URL:
+
+   ```
+   https://github.com/Holuphilix/09-jenkins-cicd-pipeline.git
+   ```
+4. Add credentials if required (username/password or personal access token).
+5. Specify the path to the Jenkinsfile:
+
+   ```
+   scripts/jenkins_pipeline.groovy
+   ```
+
+#### 4. **Enable GitHub Webhook Trigger**
+
+1. Scroll to **“Build Triggers”**.
+2. Check **“GitHub hook trigger for GITScm polling”**.
+3. Click **Save**.
+
+#### 5. **Set Up Webhook on GitHub**
+
+1. Go to your GitHub repository:
+
+   ```
+   https://github.com/Holuphilix/09-jenkins-cicd-pipeline
+   ```
+2. Click **Settings → Webhooks → Add webhook**.
+3. Enter the Payload URL:
+
+   ```
+   http://<your_public_ip_address>:8080/github-webhook/
+   ```
+4. Set **Content type** to `application/json`.
+5. Choose **Let me select individual events → Push events**.
+6. Click **Add webhook**.
+
+#### 6. **Test the Integration**
+
+1. Make a change in your local repository (e.g., update README.md).
+2. Commit and push to GitHub:
+
+   ```bash
+   git add .
+   git commit -m "Test webhook integration"
+   git push origin master
+   ```
+3. Check Jenkins → your pipeline job → **Build History** to confirm the build is automatically triggered.
+
+### ✅ **Task 9 Complete:**
+
+Jenkins is now fully integrated with GitHub. The pipeline automatically triggers on every code push via the webhook, completing the CI/CD trigger setup.
