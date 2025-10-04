@@ -22,23 +22,30 @@ pipeline {
             }
         }
         stage('Deploy') {
-    steps {
-        echo "Deploying application to ${params.DEPLOY_ENV} environment..."
-        sh """
-        docker stop my-app-container-${params.DEPLOY_ENV} || true
-        docker rm my-app-container-${params.DEPLOY_ENV} || true
-        docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest
-        """
-    }
-}
-
+            steps {
+                echo "Deploying application to ${params.DEPLOY_ENV} environment..."
+                sh """
+                docker stop my-app-container-${params.DEPLOY_ENV} || true
+                docker rm my-app-container-${params.DEPLOY_ENV} || true
+                docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest
+                """
+            }
+        }
     }
     post {
         success {
             echo 'Pipeline executed successfully with tests passed!'
+            // Optional: Add Slack or email notification
+            // slackSend(channel: '#ci-cd-notifications', message: "Build SUCCESS for ${params.DEPLOY_ENV}")
         }
         failure {
             echo 'Pipeline failed. Check test results and logs.'
+            // Optional: Add Slack or email notification
+            // slackSend(channel: '#ci-cd-notifications', message: "Build FAILURE for ${params.DEPLOY_ENV}")
+        }
+        always {
+            echo 'Pipeline completed.'
+            // Optional: Cleanup actions or archive artifacts
         }
     }
 }
