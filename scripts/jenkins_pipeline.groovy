@@ -22,11 +22,16 @@ pipeline {
             }
         }
         stage('Deploy') {
-            steps {
-                echo "Deploying application to ${params.DEPLOY_ENV} environment..."
-                sh "docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest"
-            }
-        }
+    steps {
+        echo "Deploying application to ${params.DEPLOY_ENV} environment..."
+        sh """
+        docker stop my-app-container-${params.DEPLOY_ENV} || true
+        docker rm my-app-container-${params.DEPLOY_ENV} || true
+        docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest
+        """
+    }
+}
+
     }
     post {
         success {
