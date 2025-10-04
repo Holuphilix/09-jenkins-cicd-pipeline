@@ -752,3 +752,407 @@ Build triggers are now configured, enabling **automatic pipeline execution** on 
 ### ✅ **Task 9 Complete:**
 
 Jenkins is now fully integrated with GitHub. The pipeline automatically triggers on every code push via the webhook, completing the CI/CD trigger setup.
+
+## **Task 10: Parameterizing the Jenkins Pipeline for Different Environments**
+
+**Objective:** Enhance the Jenkins pipeline by adding parameters, allowing builds to be run for different environments (e.g., development, staging, production) without modifying the pipeline script.
+
+### **Steps:**
+
+#### 1. **Access Jenkins Pipeline Job**
+
+* Open your web browser and navigate to:
+
+  ```
+  http://<your_public_ip_address>:8080
+  ```
+* Log in and go to your pipeline job (e.g., `pipeline-ci-cd-job`).
+* Click **Configure** in the left-hand menu.
+
+#### 2. **Enable Parameters**
+
+1. Scroll to **General**.
+2. Check **This project is parameterized**.
+3. Click **Add Parameter** and select the type, for example:
+
+   * **String Parameter** → Input environment name
+   * **Choice Parameter** → Provide multiple environment options
+
+#### 3. **Define Parameters**
+
+* Example **Choice Parameter** for environment:
+
+  * **Name:** `DEPLOY_ENV`
+  * **Choices:**
+
+    ```
+    development
+    staging
+    production
+    ```
+  * **Description:** `Select the deployment environment`
+
+#### 4. **Update Jenkinsfile (`scripts/jenkins_pipeline.groovy`)**
+
+* Modify the pipeline script to use the parameter:
+
+```groovy
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['development', 'staging', 'production'], description: 'Select the deployment environment')
+    }
+    stages {
+        stage('Build') {
+            steps {
+                echo "Building application for ${params.DEPLOY_ENV} environment..."
+                sh 'docker build -t my-app:latest ./src'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo "Deploying application to ${params.DEPLOY_ENV} environment..."
+                sh "docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest"
+            }
+        }
+    }
+}
+```
+
+#### 5. **Save and Apply Changes**
+
+* Push the updated Jenkinsfile to GitHub or save directly in Jenkins Pipeline editor.
+
+#### 6. **Run Parameterized Build**
+
+1. Click **Build with Parameters** in the Jenkins job.
+2. Select the desired environment (e.g., `staging`) and click **Build**.
+3. Monitor the console output to ensure the pipeline uses the selected environment parameter correctly.
+
+### ✅ **Task 10 Complete:**
+
+The Jenkins pipeline is now **parameterized**, allowing builds and deployments to different environments without modifying the pipeline code. This increases flexibility and supports multi-environment CI/CD workflows.
+
+## **Task 11: Running Automated Tests Through the Jenkins Pipeline**
+
+**Objective:** Integrate automated testing into the Jenkins pipeline to ensure code quality before deployment.
+
+### **Steps:**
+
+#### 1. **Prepare Automated Test Scripts**
+
+* Place test scripts in the `tests/` directory.
+* Create `tests/test_app.py`:
+
+```python
+import unittest
+from src.app import sample_function
+
+class TestApp(unittest.TestCase):
+    def test_sample_function(self):
+        self.assertEqual(sample_function(), "Hello, CI/CD!")
+
+if __name__ == "__main__":
+    unittest.main()
+```
+
+#### 2. **Update Jenkins Pipeline Script (`scripts/jenkins_pipeline.groovy`)**
+
+* Add a **Test** stage to the pipeline:
+
+```groovy
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['development', 'staging', 'production'], description: 'Select the deployment environment')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/Holuphilix/09-jenkins-cicd-pipeline.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo "Building application for ${params.DEPLOY_ENV} environment..."
+                sh 'docker build -t my-app:latest ./src'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo "Running automated tests..."
+                sh 'python3 -m unittest discover tests'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo "Deploying application to ${params.DEPLOY_ENV} environment..."
+                sh "docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest"
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Pipeline executed successfully with tests passed!'
+        }
+        failure {
+            echo 'Pipeline failed. Check test results and logs.'
+        }
+    }
+}
+```
+
+#### 3. **Save Changes and Push to GitHub**
+
+* Commit the updated `jenkins_pipeline.groovy` and test scripts:
+
+```bash
+git add scripts/jenkins_pipeline.groovy tests/test_app.py
+git commit -m "Add automated testing to Jenkins pipeline"
+git push origin master
+```
+
+#### 4. **Run the Pipeline**
+
+1. In Jenkins, click **Build with Parameters**.
+2. Select the environment (e.g., `development`) and click **Build**.
+3. Monitor the console output:
+
+   * **Checkout** → Pulls latest code
+   * **Build** → Docker image is created
+   * **Test** → Runs `unittest` scripts
+   * **Deploy** → Deploys container if tests pass
+
+
+### ✅ **Task 11 Complete:**
+
+Automated tests are now integrated into the Jenkins pipeline. The pipeline will **fail the build if tests do not pass**, ensuring only validated code is deployed.
+
+## **Task 12: Deploying the Dockerized Application to a Target Environment**
+
+**Objective:** Deploy the Dockerized application from the Jenkins pipeline to a target environment (development, staging, or production) after successful build and tests.
+
+### **Steps:**
+
+#### 1. **Ensure Docker Is Running on Target Environment**
+
+* Verify Docker is installed and running on the server where the application will be deployed:
+
+```bash
+docker --version
+docker ps
+```
+
+* If Jenkins and the target environment are separate, ensure the Jenkins user has access to deploy remotely (via SSH or Docker API).
+
+#### 2. **Update Jenkins Pipeline (`scripts/jenkins_pipeline.groovy`)**
+
+* Modify the **Deploy** stage to run the Docker container based on the selected environment:
+
+```groovy
+stage('Deploy') {
+    steps {
+        echo "Deploying application to ${params.DEPLOY_ENV} environment..."
+        sh """
+        docker stop my-app-container-${params.DEPLOY_ENV} || true
+        docker rm my-app-container-${params.DEPLOY_ENV} || true
+        docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest
+        """
+    }
+}
+```
+
+* Notes:
+
+  * Stops any existing container with the same name.
+  * Removes the old container before starting the new one.
+  * Maps port 8080 to the host machine (can be parameterized per environment).
+
+#### 3. **Push Pipeline Changes to GitHub**
+
+```bash
+git add scripts/jenkins_pipeline.groovy
+git commit -m "Add deployment stage for Dockerized application"
+git push origin master
+```
+
+#### 4. **Run the Pipeline**
+
+1. In Jenkins, click **Build with Parameters**.
+2. Select the desired environment (e.g., `staging`) and click **Build**.
+3. Monitor the console output:
+
+   * **Build** → Docker image is built
+   * **Test** → Automated tests pass
+   * **Deploy** → Container runs in the target environment
+
+#### 5. **Verify Deployment**
+
+* Access the application in your browser using the server IP and mapped port:
+
+```
+http://<server_ip>:8080
+```
+
+* Ensure the application runs as expected.
+
+### ✅ **Task 12 Complete:**
+
+The Dockerized application is now deployed to the selected target environment through the Jenkins pipeline, completing the automated build, test, and deployment workflow.
+
+## **Task 13: Adding Notifications and Post-Build Actions in Jenkins Pipeline**
+
+**Objective:** Set up notifications and post-build actions in Jenkins to alert the team about the success or failure of the CI/CD pipeline.
+
+### **Steps:**
+
+#### 1. **Access Jenkins Pipeline Job**
+
+* Open your web browser and navigate to:
+
+  ```
+  http://<your_public_ip_address>:8080
+  ```
+* Go to your pipeline job (e.g., `pipeline-ci-cd-job`).
+* Click **Configure** → scroll to the **Pipeline script** section.
+
+#### 2. **Update Jenkins Pipeline Script**
+
+* Add notification steps in the **post** block of your `scripts/jenkins_pipeline.groovy`.
+* with simple console echo notifications:
+
+```groovy
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['development', 'staging', 'production'], description: 'Select the deployment environment')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/Holuphilix/09-jenkins-cicd-pipeline.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo "Building application for ${params.DEPLOY_ENV} environment..."
+                sh 'docker build -t my-app:latest ./src'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo "Running automated tests..."
+                sh 'python3 -m unittest discover tests'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo "Deploying application to ${params.DEPLOY_ENV} environment..."
+                sh """
+                docker stop my-app-container-${params.DEPLOY_ENV} || true
+                docker rm my-app-container-${params.DEPLOY_ENV} || true
+                docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest
+                """
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Pipeline executed successfully with tests passed!'
+            // Optional: Add Slack or email notification
+            // slackSend(channel: '#ci-cd-notifications', message: "Build SUCCESS for ${params.DEPLOY_ENV}")
+        }
+        failure {
+            echo 'Pipeline failed. Check test results and logs.'
+            // Optional: Add Slack or email notification
+            // slackSend(channel: '#ci-cd-notifications', message: "Build FAILURE for ${params.DEPLOY_ENV}")
+        }
+        always {
+            echo 'Pipeline completed.'
+            // Optional: Cleanup actions or archive artifacts
+        }
+    }
+}
+```
+
+#### 3. **Optional: Configure Email or Slack Notifications**
+
+* **Email Notifications:**
+
+  * Install **Email Extension Plugin** in Jenkins.
+  * Add `emailext` in the `post` block for success/failure notifications.
+
+* **Slack Notifications:**
+
+  * Install **Slack Notification Plugin**.
+  * Configure Slack workspace and token.
+  * Use `slackSend` in the `post` block.
+
+#### 4. **Save and Push Changes**
+
+```bash
+git add scripts/jenkins_pipeline.groovy
+git commit -m "Add post-build notifications to Jenkins pipeline"
+git push origin master
+```
+
+#### 5. **Test Notifications**
+
+1. Trigger a build for a chosen environment.
+2. Verify console output and any configured notification channels (Slack/email).
+
+### ✅ **Task 13 Complete:**
+
+The Jenkins pipeline now includes **post-build actions and notifications**, ensuring the team is alerted of pipeline successes or failures, enhancing CI/CD workflow visibility.
+
+## **Task 14: Project Conclusion, Final Push, and Author Information**
+
+### **Conclusion**
+
+The **09-jenkins-cicd-pipeline** mini project demonstrates a complete **CI/CD workflow using Jenkins**, integrating the following key elements:
+
+* **Project Setup:** Organized directory structure with folders for scripts, tests, source code, images, and documentation.
+* **Jenkins Setup:** Installation, configuration, and pipeline job creation.
+* **Automated Builds:** Building Docker images for the application.
+* **Automated Testing:** Running Python `unittest` scripts to validate code.
+* **Deployment:** Deploying Dockerized applications to target environments (`development`, `staging`, `production`).
+* **Parameterized Pipelines:** Flexibility to select environments during builds.
+* **Build Triggers:** Automated builds on GitHub pushes and scheduled intervals.
+* **Notifications:** Post-build actions to alert the team on success or failure.
+
+This project equips learners with **hands-on experience in CI/CD pipelines**, Jenkins job creation, Docker integration, automated testing, and deployment best practices.
+
+### **Final Push to GitHub**
+
+Ensure all files are up-to-date and pushed to your repository:
+
+```bash
+# Stage all changes
+git add .
+
+# Commit with a descriptive message
+git commit -m "Final commit: Complete Jenkins CI/CD pipeline project"
+
+# Push to GitHub
+git push origin master
+```
+
+Your GitHub repository should now contain:
+
+* `README.md` → Project documentation
+* `scripts/jenkins_pipeline.groovy` → Jenkins pipeline script
+* `src/app.py` → Sample application
+* `tests/test_app.py` → Automated tests
+* `images/` → Screenshots and visuals
+
+### **Author**
+
+**Philip Oluwaseyi Oludolamu**
+
+* **Email:** [oluphilix@gmail.com](mailto:oluphilix@gmail.com)
+* **Phone:** +90 533 876 3067
+* **GitHub:** [https://github.com/Holuphilix/09-jenkins-cicd-pipeline](https://github.com/Holuphilix/09-jenkins-cicd-pipeline)
+
+### ✅ **Task 14 Complete:**
+
+The project is fully documented, finalized, and pushed to GitHub, with author information included. This marks the **completion of the 09-jenkins-cicd-pipeline mini project**.
