@@ -1,8 +1,7 @@
 pipeline {
     agent any
-    environment {
-        APP_NAME = 'my-app'
-        DEPLOY_ENV = 'development'
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['development', 'staging', 'production'], description: 'Select the deployment environment')
     }
     stages {
         stage('Checkout') {
@@ -12,29 +11,29 @@ pipeline {
         }
         stage('Build') {
             steps {
-                echo 'Building Docker image...'
+                echo "Building application for ${params.DEPLOY_ENV} environment..."
                 sh 'docker build -t my-app:latest ./src'
             }
         }
         stage('Test') {
             steps {
-                echo 'Running tests inside Docker container...'
-                sh 'docker run --rm my-app:latest /bin/sh -c "echo Testing application"'
+                echo "Running automated tests..."
+                sh 'python3 -m unittest discover tests'
             }
         }
         stage('Deploy') {
             steps {
-                echo 'Deploying Docker container...'
-                sh 'docker run -d --name my-app-container -p 8080:8080 my-app:latest'
+                echo "Deploying application to ${params.DEPLOY_ENV} environment..."
+                sh "docker run -d --name my-app-container-${params.DEPLOY_ENV} -p 8080:8080 my-app:latest"
             }
         }
     }
     post {
         success {
-            echo 'Pipeline executed successfully with Docker!'
+            echo 'Pipeline executed successfully with tests passed!'
         }
         failure {
-            echo 'Pipeline failed. Check Docker logs.'
+            echo 'Pipeline failed. Check test results and logs.'
         }
     }
 }
